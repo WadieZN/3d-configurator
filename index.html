@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Padel Court Viewer</title>
+
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #000;
+      padding: 50px 0;
+    }
+
+    .configurator-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .configurator {
+      width: 100%;
+      display: flex;
+      justify-content: start;
+      align-items: start;
+      gap: 10px;
+      padding: 15px;
+    }
+
+    #config-panel {
+      width: 325px;
+      background: #1f1f1f;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #config-panel h2 {
+      margin: 10px 0 15px 0;
+      font-size: 26px;
+      color: #ccff00;
+    }
+
+    #config-panel label {
+      display: block;
+      margin: 20px 0 10px 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .config-section {
+      background: #333;
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .config-section:not(:first-child) {
+      margin-top: 15px;
+    }
+
+    .color-selector {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .color-swatch {
+      width: 40px;
+      height: 40px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, border 0.2s;
+      box-shadow: 0 0 3px #888;
+    }
+
+    .color-swatch.rainbow-swatch {
+      background: linear-gradient(to bottom right,
+          rgb(174, 0, 255), rgb(0, 132, 255), rgb(0, 216, 0));
+      cursor: pointer;
+      border: none;
+      width: 40px;
+      height: 40px;
+      position: relative;
+    }
+
+    #customColorPicker {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+
+    }
+
+    .color-swatch:hover,
+    .color-swatch.rainbow-swatch:hover {
+      transform: scale(1.1);
+      border-color: #888;
+    }
+
+    .color-swatch.selected {
+      border-color: #ccff00;
+    }
+
+    .color-swatch.rainbow-swatch.selected {
+      border: 2px solid #ccff00;
+    }
+
+    .padel-viewer {
+      position: sticky;
+      top: 45px;
+      width: 100%;
+    }
+
+    .padel-viewer-wrapper {
+      min-width: 500px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    model-viewer {
+      width: 100%;
+      max-width: 100%;
+      height: 94vh;
+      max-height: 100%;
+      aspect-ratio: 1 / 1;
+      background: #000;
+      border-radius: 10px;
+    }
+
+    .padel-logo {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      z-index: 2;
+      width: 75px;
+      opacity: 0.75;
+    }
+
+    .progress-bar {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      background-color: #111;
+      border-radius: 10px;
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: start;
+    }
+
+    .loading-text {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    .loading-text span {
+      color: #fff;
+      font-size: 24px;
+      text-align: center;
+    }
+
+    .update-bar {
+      height: 15px;
+      width: 0%;
+      background-color: #ccff00;
+      transition: width 0.3s ease;
+      border-radius: 25px;
+    }
+
+    #modelFallback {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      text-align: center;
+      color: #fff;
+      font-size: 20px;
+      line-height: 30px;
+    }
+
+    #modelFallback span {
+      color: #ccff00;
+      font-weight: 600;
+    }
+
+    .config-btn {
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px !important;
+      box-shadow: none;
+      font-size: 1rem;
+      cursor: pointer;
+      margin: 5px 0;
+      width: auto;
+      text-align: left;
+      transition: 200ms;
+    }
+
+    .config-btn:hover {
+      background: #555;
+      color: #fff;
+    }
+
+    .config-btn.selected {
+      background-color: #ccff00;
+      color: #000;
+    }
+
+    .config-btn.disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .config-btn.disabled:hover {
+      background: #444;
+    }
+
+    .config-btn-container {
+      display: flex;
+      justify-content: start;
+      align-items: start;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .loading-spinner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .loading-spinner.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .spinner {
+      width: 75px;
+      height: 75px;
+      background-image: url('https://infinitepadelcourts.com/wp-content/uploads/2024/04/logo-degrade.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      animation: spin 2.5s ease-in-out infinite;
+    }
+
+    #fullscreenBtn {
+      position: absolute;
+      right: 15px;
+      bottom: 15px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: 200ms;
+      opacity: 0.6;
+      box-shadow: none;
+    }
+
+    #fullscreenBtn img {
+      width: 40px;
+    }
+
+    #fullscreenBtn:hover {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+
+    #lightPostColors {
+      display: none;
+    }
+
+    #configuration-summary h3 {
+      font-size: 24px;
+      color: #ccff00;
+      margin: 20px 10px;
+    }
+
+    #configuration-summary {
+      background: #222;
+      color: #fff;
+      padding: 15px;
+      border-radius: 15px;
+      width: 500px;
+    }
+
+    #summary-content ul {
+      display: flex;
+      flex-direction: column;
+      justify-content: start;
+      align-items: start;
+      gap: 20px;
+      padding: 10px;
+      list-style: none;
+      line-height: 24px;
+    }
+
+    #summary-content ul strong {
+      color: #aaa;
+      padding-right: 10px;
+    }
+
+    #turfOptions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 10px;
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+
+    #turfOptions button {
+      background: #222;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 12px;
+      gap: 10px;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 5px;
+      width: 140px;
+      transition: 200ms;
+    }
+
+    #turfOptions button:hover {
+      background: #1a1a1a;
+      box-shadow: 0 0 10px #555;
+    }
+
+    #turfOptions button.selected {
+      background: #ccff00;
+      color: #000;
+      font-weight: 600;
+    }
+
+    #turfOptions button img {
+      width: 85px;
+      height: 65px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      30% {
+        transform: rotate(360deg);
+      }
+
+      100% {
+        transform: rotate(720deg);
+      }
+    }
+
+    @media (max-width: 1080px) {
+      body {
+        flex-direction: column;
+      }
+
+      .configurator {
+        flex-direction: column;
+        padding: 10px;
+      }
+
+      #config-panel {
+        width: 100%;
+        height: 100%;
+        padding: 10px;
+      }
+
+      .padel-viewer-wrapper {
+        padding: 0;
+        height: 50vh;
+        min-width: 100%;
+        flex: none;
+      }
+
+      model-viewer {
+        height: 50vh;
+        width: 100%;
+        aspect-ratio: unset;
+      }
+
+      .padel-logo {
+        top: 10px;
+        left: 10px;
+        width: 50px;
+      }
+
+      .progress-bar {
+        padding: 10px;
+      }
+
+      .loading-text span {
+        font-size: 16px;
+      }
+
+      #fullscreenBtn {
+        right: 10px;
+        bottom: 10px;
+      }
+
+      #fullscreenBtn img {
+        width: 30px;
+      }
+
+      #turfOptions {
+        display: flex;
+        justify-content: center;
+        align-items: start;
+        flex-wrap: wrap;
+      }
+
+      #configuration-summary {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="configurator-container">
+    <div class="configurator">
+      <div id="config-panel">
+        <div class="config-section">
+          <h2>Structure</h2>
+          <label>Type du terrain</label>
+          <div class="config-btn-container">
+            <button id="courtTypeStandard" class="config-btn court-type selected">Standard</button>
+            <button id="courtTypePanoramic" class="config-btn court-type">Panoramique</button>
+            <button id="courtTypeSuperPanoramic" class="config-btn court-type">Super Panoramique</button>
+          </div>
+          <label>Couleur des bordures</label>
+          <div class="color-selector" id="borderColorOptions">
+            <div class="color-swatch selected" style="background-color: #000000;" data-color="#000000" title="Noir">
+            </div>
+            <div class="color-swatch" style="background-color: #ffffff;" data-color="#ffffff" title="Blanc"></div>
+            <div class="color-swatch" style="background-color: #888888;" data-color="#888888" title="Gris"></div>
+            <div class="color-swatch" style="background-color: #006400;" data-color="#006400" title="Vert Foncé"></div>
+            <div class="color-swatch" style="background-color: #228B22;" data-color="#228B22" title="Vert"></div>
+            <div class="color-swatch" style="background-color: #1E90FF;" data-color="#1E90FF" title="Bleu"></div>
+            <div class="color-swatch" style="background-color: #00008B;" data-color="#00008B" title="Bleu Foncé"></div>
+            <div class="color-swatch" style="background-color: #FF4500;" data-color="#FF4500" title="Orange"></div>
+            <div class="color-swatch" style="background-color: #FFD700;" data-color="#FFD700" title="Jaune"></div>
+            <div class="color-swatch" style="background-color: #F5F5DC;" data-color="#F5F5DC" title="Beige"></div>
+            <div class="color-swatch" style="background-color: #8B4513;" data-color="#8B4513" title="Marron"></div>
+            <div class="color-swatch" style="background-color: #B22222;" data-color="#B22222" title="Rouge Brique">
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>Tapis</h2>
+          <label>Type du gazon</label>
+          <div class="config-btn-container" id="turfOptions">
+            <button id="turfTypeMondo1" class="config-btn turf-type selected"><img src="./mondo1.png"
+                alt="MONDO TURF NSF STX 96">MONDO TURF NSF STX 96</button>
+            <button id="turfTypeMondo2" class="config-btn turf-type"><img src="./mondo2.png"
+                alt="MONDO TURF NSF SUPERCOURT XN">MONDO TURF NSF SUPERCOURT XN</button>
+
+            <button id="turfTypeDrivePro" class="config-btn turf-type"><img src="./cesped-artificial-drivepro-12mm.png"
+                alt="Gazon synthétique DRIVE PRO">Gazon synthétique DRIVE PRO 12mm</button>
+            <button id="turfTypeWay" class="config-btn turf-type"><img src="./gazon-synthetique-Way-12mm.png"
+                alt="Gazon synthétique Way">Gazon synthétique Way 12mm</button>
+            <button id="turfTypePGR" class="config-btn turf-type"><img src="./gazon-synthetique-pgr10mm.png"
+                alt="Gazon Synthétique PGR">Gazon Synthétique PGR 10mm</button>
+            <button id="turfTypeMatchPlay" class="config-btn turf-type"><img
+                src="./cesped-artificial-matchplay-10mm.png" alt="Gazon synthétique PLAY EASY">Gazon synthétique PLAY
+              EASY 10mm</button>
+            <button id="turfTypeProTurf" class="config-btn turf-type"><img src="./cesped-artificial-proturf-12mm.png"
+                alt="Gazon synthétique PROTURF">Gazon synthétique PROTURF 12mm</button>
+          </div>
+          <label>Couleur</label>
+          <div class="color-selector" id="colorOptions">
+            <div class="color-swatch selected" style="background-color: #0066eb;" data-color="#0066eb" title="Bleu">
+            </div>
+            <div class="color-swatch" style="background-color: #2BAA26;" data-color="#2BAA26" title="Vert"></div>
+            <div class="color-swatch" style="background-color: #111111;" data-color="#181818" title="Noir"></div>
+            <div class="color-swatch" style="background-color: #901236;" data-color="#901236" title="Rose"></div>
+            <div class="color-swatch" style="background-color: #666666;" data-color="#666666" title="Gris"></div>
+            <div class="color-swatch" style="background-color: #EF521F;" data-color="#EF521F" title="Orange"></div>
+            <div class="color-swatch rainbow-swatch" title="Couleur personnalisée">
+              <input type="color" id="customColorPicker" />
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>Poteaux lumineux</h2>
+          <div class="config-btn-container">
+            <button id="lightOptionNone" class="config-btn led-light selected">Aucun</button>
+            <button id="lightOptionNormal" class="config-btn led-light">Droit</button>
+            <button id="lightOptionCurved" class="config-btn led-light">Courbé</button>
+            <button id="lightOptionVshape" class="config-btn led-light">En V</button>
+            <button id="lightOptionFloating" class="config-btn led-light">Flottant</button>
+          </div>
+          <div id="lightPostColors">
+            <label>Couleur des poteaux lumineux</label>
+            <div class="color-selector" id="lightPostsColorOptions">
+              <div class="color-swatch selected" style="background-color: #000000;" data-color="#000000" title="Noir">
+              </div>
+              <div class="color-swatch" style="background-color: #ffffff;" data-color="#ffffff" title="Blanc"></div>
+              <div class="color-swatch" style="background-color: #888888;" data-color="#888888" title="Gris"></div>
+              <div class="color-swatch" style="background-color: #006400;" data-color="#006400" title="Vert Foncé">
+              </div>
+              <div class="color-swatch" style="background-color: #228B22;" data-color="#228B22" title="Vert"></div>
+              <div class="color-swatch" style="background-color: #1E90FF;" data-color="#1E90FF" title="Bleu"></div>
+              <div class="color-swatch" style="background-color: #00008B;" data-color="#00008B" title="Bleu Foncé">
+              </div>
+              <div class="color-swatch" style="background-color: #FF4500;" data-color="#FF4500" title="Orange"></div>
+              <div class="color-swatch" style="background-color: #FFD700;" data-color="#FFD700" title="Jaune"></div>
+              <div class="color-swatch" style="background-color: #F5F5DC;" data-color="#F5F5DC" title="Beige"></div>
+              <div class="color-swatch" style="background-color: #8B4513;" data-color="#8B4513" title="Marron"></div>
+              <div class="color-swatch" style="background-color: #B22222;" data-color="#B22222" title="Rouge Brique">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>Protection</h2>
+          <label>Filets de protection</label>
+          <div class="config-btn-container">
+            <button id="protectionNetNone" class="config-btn protection-net selected">Aucun</button>
+            <button id="protectionNetFB" class="config-btn protection-net">Devant / Derrière</button>
+            <button id="protectionNetSides" class="config-btn protection-net">Côtés</button>
+            <button id="protectionNetUshape" class="config-btn protection-net">Forme U</button>
+            <button id="protectionNetFull" class="config-btn protection-net">Complet</button>
+          </div>
+          <div id="polesProtectionGroup">
+            <label>Protection de filet</label>
+            <div class="config-btn-container">
+              <button id="polesProtectionNone" class="config-btn poles-protection selected">Non</button>
+              <button id="polesProtectionNormal" class="config-btn poles-protection">Oui</button>
+            </div>
+          </div>
+          <div id="doorProtectionGroup">
+            <label>Protection de la porte</label>
+            <div class="config-btn-container">
+              <button id="doorProtectionNone" class="config-btn door-protection selected">Non</button>
+              <button id="doorProtectionNormal" class="config-btn door-protection">Oui</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="doorsOptions" class="config-section">
+          <h2>Portes</h2>
+          <label>Porte gauche</label>
+          <div class="config-btn-container">
+            <button id="leftDoorNone" class="config-btn left-door selected">Aucune</button>
+            <button id="leftDoorNormal" class="config-btn left-door">Porte Normale</button>
+            <button id="leftDoorSliding" class="config-btn left-door">Porte coulissante</button>
+          </div>
+          <label>Porte droite</label>
+          <div class="config-btn-container">
+            <button id="rightDoorNone" class="config-btn right-door selected">Aucune</button>
+            <button id="rightDoorNormal" class="config-btn right-door">Porte Normale</button>
+            <button id="rightDoorSliding" class="config-btn right-door">Porte coulissante</button>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>Toiture</h2>
+          <div class="config-btn-container">
+            <button id="coverOptionNone" class="config-btn cover selected">Aucune</button>
+            <button id="coverOptionOne" class="config-btn cover">Type 1</button>
+            <button id="coverOptionTwo" class="config-btn cover">Type 2</button>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>Marges</h2>
+          <div class="config-btn-container">
+            <button id="marginNone" class="config-btn margin selected">Aucune</button>
+            <button id="marginCement" class="config-btn margin">Ciment</button>
+            <button id="marginMatFull" class="config-btn margin">Tapis - Complet</button>
+            <button id="marginMatSides" class="config-btn margin">Tapis - Cotés</button>
+          </div>
+        </div>
+      </div>
+      <div class="padel-viewer">
+        <model-viewer id="courtViewer" src="./padelCourt.glb" auto-rotate camera-controls disable-pan exposure="1"
+          camera-orbit="20deg 70deg 70m" min-camera-orbit="auto 0deg 40m" max-camera-orbit="auto 90deg auto"
+          camera-target="0m 2m 0m" environment-image="./sky.jpg" fullscreen>
+          <button id="fullscreenBtn"><img src="./fullscreen.png" alt="Plein écran" title="Plein écran"></button>
+          <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+          </div>
+          <div class="progress-bar" slot="progress-bar">
+            <div class="update-bar"></div>
+            <div class="loading-text">
+              <span>Chargement du modèle...</span>
+            </div>
+          </div>
+        </model-viewer>
+        <div id="modelFallback" style="display:none;">
+          Le modèle 3D n'a pas pu être chargé. Votre appareil ou navigateur pourrait ne pas le supporter. <br>
+          <span>La configuration fonctionne toujours.</span>
+        </div>
+      </div>
+    </div>
+    <div id="configuration-summary">
+      <h3>Résumé de la configuration</h3>
+      <div id="summary-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const viewer = document.getElementById('courtViewer');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const updateBar = document.querySelector('.update-bar');
+    const progressBar = document.querySelector('.progress-bar');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenIcon = fullscreenBtn.querySelector('img');
+    const doorsOptions = document.getElementById('doorsOptions');
+    const polesProtectionGroup = document.getElementById('polesProtectionGroup');
+    const configPanel = document.getElementById('config-panel');
+    const contactForm = document.getElementById('padel-config-form');
+
+    // Scene and mesh groups
+    let scene = null;
+    const meshGroups = {
+      lightPost: [],
+      polesProtection: [],
+      doorProtection: [],
+      coverOption: [],
+      protectionNet: [],
+      courtType: [],
+      leftDoor: [],
+      rightDoor: [],
+      margin: [],
+    };
+
+    // Application state
+    const state = {
+      courtType: 'standard',
+      lightOption: 'none',
+      polesProtection: 'none',
+      doorProtection: 'none',
+      coverOption: 'none',
+      protectionNet: 'none',
+      leftDoor: 'none',
+      rightDoor: 'none',
+      margin: 'none',
+      turfType: 'mondo1',
+    };
+
+    // Fullscreen handling
+    fullscreenBtn.addEventListener('click', () => {
+      document.fullscreenElement ? document.exitFullscreen() : viewer.requestFullscreen();
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFullscreen = !!document.fullscreenElement;
+      fullscreenIcon.src = isFullscreen ? 'https://infinitepadelcourts.com/wp-content/uploads/2025/04/exit-fullscreen.png' : 'https://infinitepadelcourts.com/wp-content/uploads/2025/04/fullscreen.png';
+      fullscreenIcon.alt = isFullscreen ? 'Quitter le plein écran' : 'Plein écran';
+      fullscreenIcon.title = fullscreenIcon.alt;
+    });
+
+    viewer.addEventListener('error', showFallback);
+
+    viewer.addEventListener('load', () => {
+      document.getElementById('modelFallback').style.display = 'none';
+    });
+
+    const showLoading = () => loadingSpinner.classList.add('active');
+    const hideLoading = () => loadingSpinner.classList.remove('active');
+    const hideLoadingAfterDelay = () => setTimeout(hideLoading, 400);
+
+    const hexToLinearFactor = (hex) => {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+      return [r, g, b].map(c => Math.pow(c, 2.2)).concat(1);
+    };
+
+    // Visibility control
+    const updateMeshVisibility = () => {
+      const { courtType, lightOption, polesProtection, doorProtection, coverOption, protectionNet } = state;
+
+      meshGroups.courtType.forEach(mesh => {
+        mesh.visible = false;
+
+        if (state.courtType === 'standard' && mesh.name.includes('standard')) {
+          mesh.visible = true;
+        }
+
+        if (state.courtType === 'panoramic' &&
+          mesh.name.includes('panoramic') &&
+          !mesh.name.includes('super_panoramic') &&
+          !mesh.name.includes('standard')) {
+          mesh.visible = true;
+        }
+
+        if (state.courtType === 'super_panoramic') {
+          if (mesh.name.includes('super_panoramic')) {
+            mesh.visible = true;
+          }
+        }
+      });
+
+      meshGroups.lightPost.forEach(mesh => {
+        mesh.visible = mesh.name.includes(`${lightOption}_led`);
+      });
+
+      meshGroups.polesProtection.forEach(mesh => {
+        mesh.visible = polesProtection === 'normal';
+      });
+
+      meshGroups.doorProtection.forEach(mesh => {
+        mesh.visible = doorProtection === 'normal';
+      });
+
+      meshGroups.leftDoor.forEach(mesh => {
+        mesh.visible =
+          (state.leftDoor === 'normal' && mesh.name.includes('normal_door_left')) ||
+          (state.leftDoor === 'sliding' && mesh.name.includes('sliding_door_left'));
+      });
+
+      meshGroups.rightDoor.forEach(mesh => {
+        mesh.visible =
+          (state.rightDoor === 'normal' && mesh.name.includes('normal_door_right')) ||
+          (state.rightDoor === 'sliding' && mesh.name.includes('sliding_door_right'));
+      });
+
+      meshGroups.coverOption.forEach(mesh => {
+        mesh.visible = mesh.name.includes(coverOption);
+      });
+
+      meshGroups.protectionNet.forEach(mesh => {
+        mesh.visible = false;
+        if (protectionNet === 'u') {
+          mesh.visible = mesh.name.includes('protection_net_u');
+        } else if (protectionNet === 'full') {
+          mesh.visible = mesh.name.includes('protection_net_fb') || mesh.name.includes('protection_net_sides');
+        } else if (protectionNet === 'sides') {
+          mesh.visible = mesh.name.includes('protection_net_sides');
+        } else if (protectionNet === 'fb') {
+          mesh.visible = mesh.name.includes('protection_net_fb');
+        }
+      });
+
+      meshGroups.margin.forEach(mesh => {
+        mesh.visible =
+          (state.margin === 'cement' && mesh.name.includes('cement_margin')) ||
+          (state.margin === 'full' && mesh.name.includes('mat_margin_full')) ||
+          (state.margin === 'sides' && mesh.name.includes('mat_margin_sides'));
+      });
+    };
+
+    // UI Helpers
+    const setConfigButton = (groupSelector, selectedId) => {
+      document.querySelectorAll(groupSelector).forEach(btn => {
+        btn.classList.toggle('selected', btn.id === selectedId);
+      });
+    };
+
+    const toggleDoorsAvailability = () => {
+      const polesSelected = state.polesProtection !== 'none';
+      const doorProtectionSelected = state.doorProtection !== 'none';
+
+      const disableDoors = polesSelected || doorProtectionSelected;
+
+      const leftDoorButtons = document.querySelectorAll('.config-btn.left-door');
+      const rightDoorButtons = document.querySelectorAll('.config-btn.right-door');
+
+      leftDoorButtons.forEach(btn => {
+        btn.disabled = disableDoors;
+        btn.classList.toggle('disabled', disableDoors);
+      });
+
+      rightDoorButtons.forEach(btn => {
+        btn.disabled = disableDoors;
+        btn.classList.toggle('disabled', disableDoors);
+      });
+
+      if (disableDoors && (state.leftDoor !== 'none' || state.rightDoor !== 'none')) {
+        state.leftDoor = 'none';
+        state.rightDoor = 'none';
+        setConfigButton('.config-btn.left-door', 'leftDoorNone');
+        setConfigButton('.config-btn.right-door', 'rightDoorNone');
+        updateMeshVisibility();
+      }
+    };
+
+    const toggleTopNetProtectionAvailability = () => {
+      const isFloatingLED = state.lightOption === 'floating';
+      const protectionNetButtons = document.querySelectorAll('.config-btn.protection-net');
+
+      protectionNetButtons.forEach(btn => {
+        btn.disabled = isFloatingLED;
+        btn.classList.toggle('disabled', isFloatingLED);
+      });
+
+      if (isFloatingLED && state.protectionNet !== 'none') {
+        state.protectionNet = 'none';
+        setConfigButton('.config-btn.protection-net', 'protectionNetNone');
+        updateMeshVisibility();
+      }
+    };
+
+
+    const toggleLightPostColorAvailability = () => {
+      const lightPostColors = document.getElementById('lightPostColors');
+      lightPostColors.style.display = state.lightOption === 'none' ? 'none' : 'block';
+    };
+
+    // Event handlers
+    const addOptionListeners = (options) => {
+      options.forEach(({ id, group, key, value }) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.addEventListener('click', () => {
+            showLoading();
+            state[key] = value;
+
+            if (scene) {
+              updateMeshVisibility();
+            }
+
+            setConfigButton(`.config-btn.${group}`, id);
+            toggleDoorsAvailability();
+            toggleLightPostColorAvailability();
+            toggleTopNetProtectionAvailability();
+            hideLoadingAfterDelay();
+            updateConfigurationSummary();
+          });
+        }
+      });
+    };
+
+    const setupColorSelector = (selectorId, onChange) => {
+      const swatches = document.querySelectorAll(`${selectorId} .color-swatch`);
+      swatches.forEach(swatch => {
+        swatch.addEventListener('click', () => {
+          swatches.forEach(s => s.classList.remove('selected'));
+          swatch.classList.add('selected');
+          if (scene) {
+            onChange(swatch.dataset.color);
+          }
+          updateConfigurationSummary();
+        });
+      });
+    };
+
+    const customColorPicker = document.getElementById('customColorPicker');
+    const rainbowSwatch = document.querySelector('.color-swatch.rainbow-swatch');
+    const turfColorOptions = document.getElementById('colorOptions');
+
+    rainbowSwatch.addEventListener('click', () => {
+      customColorPicker.click();
+    });
+
+    customColorPicker.addEventListener('input', (event) => {
+      const color = event.target.value;
+
+      document.querySelectorAll('#colorOptions .color-swatch').forEach(swatch => {
+        swatch.classList.remove('selected');
+      });
+
+      rainbowSwatch.classList.add('selected');
+
+      if (scene) {
+        updateCourtFloorColor(color);
+      }
+      updateConfigurationSummary();
+    });
+
+    function updateCourtFloorColor(colorHex) {
+      if (!scene) return;
+
+      const colorLinear = hexToLinearFactor(colorHex);
+
+      scene.materials.forEach(mat => {
+        if (mat.name === 'court_floor_mat' || mat.name.startsWith('mat_margin')) {
+          mat.pbrMetallicRoughness?.setBaseColorFactor(colorLinear);
+        }
+      });
+    }
+
+    viewer.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      showFallback();
+    });
+
+    setTimeout(() => {
+      if (!scene) {
+        showFallback();
+      }
+    }, 12000);
+
+    function showFallback() {
+      document.getElementById('modelFallback').style.display = 'block';
+      document.querySelector('.progress-bar').style.display = 'none';
+      loadingSpinner.style.display = 'none';
+      updateConfigurationSummary();
+    }
+
+    addOptionListeners([
+      { id: 'courtTypeStandard', group: 'court-type', key: 'courtType', value: 'standard' },
+      { id: 'courtTypePanoramic', group: 'court-type', key: 'courtType', value: 'panoramic' },
+      { id: 'courtTypeSuperPanoramic', group: 'court-type', key: 'courtType', value: 'super_panoramic' },
+
+      { id: 'lightOptionNone', group: 'led-light', key: 'lightOption', value: 'none' },
+      { id: 'lightOptionNormal', group: 'led-light', key: 'lightOption', value: 'normal' },
+      { id: 'lightOptionCurved', group: 'led-light', key: 'lightOption', value: 'curved' },
+      { id: 'lightOptionVshape', group: 'led-light', key: 'lightOption', value: 'v_shape' },
+      { id: 'lightOptionFloating', group: 'led-light', key: 'lightOption', value: 'floating' },
+
+      { id: 'turfTypeMondo1', group: 'turf-type', key: 'turfType', value: 'mondo1' },
+      { id: 'turfTypeMondo2', group: 'turf-type', key: 'turfType', value: 'mondo2' },
+      { id: 'turfTypeDrivePro', group: 'turf-type', key: 'turfType', value: 'DrivePro' },
+      { id: 'turfTypeWay', group: 'turf-type', key: 'turfType', value: 'Way' },
+      { id: 'turfTypeMatchPlay', group: 'turf-type', key: 'turfType', value: 'MatchPlay' },
+      { id: 'turfTypeProTurf', group: 'turf-type', key: 'turfType', value: 'ProTurf' },
+      { id: 'turfTypePGR', group: 'turf-type', key: 'turfType', value: 'PGR' },
+
+      { id: 'polesProtectionNone', group: 'poles-protection', key: 'polesProtection', value: 'none' },
+      { id: 'polesProtectionNormal', group: 'poles-protection', key: 'polesProtection', value: 'normal' },
+
+      { id: 'doorProtectionNone', group: 'door-protection', key: 'doorProtection', value: 'none' },
+      { id: 'doorProtectionNormal', group: 'door-protection', key: 'doorProtection', value: 'normal' },
+
+      { id: 'leftDoorNone', group: 'left-door', key: 'leftDoor', value: 'none' },
+      { id: 'leftDoorNormal', group: 'left-door', key: 'leftDoor', value: 'normal' },
+      { id: 'leftDoorSliding', group: 'left-door', key: 'leftDoor', value: 'sliding' },
+      { id: 'rightDoorNone', group: 'right-door', key: 'rightDoor', value: 'none' },
+      { id: 'rightDoorNormal', group: 'right-door', key: 'rightDoor', value: 'normal' },
+      { id: 'rightDoorSliding', group: 'right-door', key: 'rightDoor', value: 'sliding' },
+
+      { id: 'coverOptionNone', group: 'cover', key: 'coverOption', value: 'none' },
+      { id: 'coverOptionOne', group: 'cover', key: 'coverOption', value: 'cover_1' },
+      { id: 'coverOptionTwo', group: 'cover', key: 'coverOption', value: 'cover_2' },
+
+      { id: 'protectionNetNone', group: 'protection-net', key: 'protectionNet', value: 'none' },
+      { id: 'protectionNetFB', group: 'protection-net', key: 'protectionNet', value: 'fb' },
+      { id: 'protectionNetSides', group: 'protection-net', key: 'protectionNet', value: 'sides' },
+      { id: 'protectionNetUshape', group: 'protection-net', key: 'protectionNet', value: 'u' },
+      { id: 'protectionNetFull', group: 'protection-net', key: 'protectionNet', value: 'full' },
+
+      { id: 'marginNone', group: 'margin', key: 'margin', value: 'none' },
+      { id: 'marginCement', group: 'margin', key: 'margin', value: 'cement' },
+      { id: 'marginMatFull', group: 'margin', key: 'margin', value: 'full' },
+      { id: 'marginMatSides', group: 'margin', key: 'margin', value: 'sides' },
+    ]);
+
+    setupColorSelector('#colorOptions', color => {
+      const mat = scene.getMaterialByName('court_floor_mat');
+      mat?.pbrMetallicRoughness?.setBaseColorFactor(hexToLinearFactor(color));
+
+      if (scene) {
+        scene.materials.forEach(mat => {
+          if (mat.name.startsWith('mat_margin')) {
+            mat.pbrMetallicRoughness?.setBaseColorFactor(hexToLinearFactor(color));
+          }
+        });
+      }
+    });
+
+    const applyToMats = (filterFn, color) => {
+      const linear = hexToLinearFactor(color);
+      scene.materials.forEach(mat => {
+        if (filterFn(mat.name)) {
+          mat?.pbrMetallicRoughness?.setBaseColorFactor(linear);
+        }
+      });
+    };
+
+    setupColorSelector('#borderColorOptions', color =>
+      applyToMats(name => ['court_borders', 'netted_wall', 'top_protection_net', 'sliding_door', 'standard', 'panoramic'].some(prefix => name.startsWith(prefix)), color)
+    );
+
+    setupColorSelector('#lightPostsColorOptions', color =>
+      applyToMats(name => ['normal_led', 'curved_led', 'v_shape_led', 'floating_led'].some(prefix => name.startsWith(prefix)), color)
+    );
+
+    // Viewer setup
+    viewer.addEventListener('load', () => {
+      scene = viewer.model;
+      const hierarchy = scene[Object.getOwnPropertySymbols(scene).find(sym => sym.toString().includes('hierarchy'))];
+
+      // Mesh grouping
+      const meshSelectors = [
+        { key: 'courtType', substrings: ['standard', 'panoramic', 'super_panoramic'] },
+        { key: 'lightPost', substrings: ['normal_led', 'curved_led', 'v_shape_led', 'floating_led'] },
+        { key: 'polesProtection', substrings: ['net_protection'] },
+        { key: 'doorProtection', substrings: ['door_protection'] },
+        { key: 'leftDoor', substrings: ['normal_door_left', 'sliding_door_left'] },
+        { key: 'rightDoor', substrings: ['normal_door_right', 'sliding_door_right'] },
+        { key: 'coverOption', substrings: ['cover_1', 'cover_2'] },
+        { key: 'protectionNet', substrings: ['protection_net_fb', 'protection_net_sides', 'protection_net_u', 'protection_net_full'] },
+        { key: 'margin', substrings: ['cement_margin', 'mat_margin_full', 'mat_margin_sides'] },
+      ];
+
+      meshSelectors.forEach(({ key, substrings }) => {
+        meshGroups[key] = hierarchy.filter(obj =>
+          obj.name && substrings.some(sub => obj.name.includes(sub)) && obj.mesh
+        ).map(obj => obj.mesh);
+      });
+
+      // Initial setup
+      updateMeshVisibility();
+      toggleDoorsAvailability();
+      toggleTopNetProtectionAvailability();
+      toggleLightPostColorAvailability();
+      updateConfigurationSummary();
+    });
+
+    // Loading progress
+    viewer.addEventListener('progress', (event) => {
+      const progress = event.detail.totalProgress;
+      updateBar.style.width = `${progress * 100}%`;
+
+      if (progress === 1) {
+        setTimeout(() => progressBar.style.opacity = '0', 7500);
+        setTimeout(() => progressBar.style.display = 'none', 8000);
+      }
+    });
+
+    function updateConfigurationSummary() {
+      const summary = document.getElementById('summary-content');
+      if (!summary) return;
+
+      let html = '<ul>';
+      let configArray = [];
+
+      const courtType = document.querySelector('.court-type.selected')?.textContent || 'Standard';
+      html += `<li><strong>Type de terrain :</strong> ${courtType}</li>`;
+      configArray.push(`Type de terrain: ${courtType}`);
+
+      const borderColor = document.querySelector('#borderColorOptions .color-swatch.selected')?.title || 'Non spécifié';
+      html += `<li><strong>Couleur des bordures :</strong> ${borderColor}</li>`;
+      configArray.push(`Couleur des bordures: ${borderColor}`);
+
+      const turfType = document.querySelector('.turf-type.selected')?.textContent || 'Mondo 1';
+      html += `<li><strong>Type du tapis :</strong> ${turfType}</li>`;
+      configArray.push(`Type du tapis: ${turfType}`);
+
+      const selectedSwatch = document.querySelector('#colorOptions .color-swatch.selected');
+
+      let carpetColor = selectedSwatch?.title || 'Non spécifié';
+
+      let hex = selectedSwatch?.getAttribute('data-color') || null;
+
+      if (selectedSwatch?.classList.contains('rainbow-swatch')) {
+        const colorInput = selectedSwatch.querySelector('input[type="color"]');
+        if (colorInput) {
+          hex = colorInput.value;
+        }
+      }
+
+      if (carpetColor.toLowerCase().includes('personnalisée') && hex) {
+        carpetColor += ` (${hex})`;
+      }
+
+      html += `<li><strong>Couleur du tapis :</strong> ${carpetColor}</li>`;
+      configArray.push(`Couleur du tapis: ${carpetColor}`);
+
+
+      const lightOption = document.querySelector('.led-light.selected')?.textContent || 'Aucun';
+      html += `<li><strong>Poteaux lumineux :</strong> ${lightOption}</li>`;
+      configArray.push(`Poteaux lumineux: ${lightOption}`);
+
+      if (document.getElementById('lightPostColors')?.style.display !== 'none') {
+        const lightPostColor = document.querySelector('#lightPostsColorOptions .color-swatch.selected')?.title || 'Non spécifié';
+        html += `<li><strong>Couleur des poteaux lumineux :</strong> ${lightPostColor}</li>`;
+        configArray.push(`Couleur des poteaux lumineux: ${lightPostColor}`);
+      }
+
+      const protectionNet = document.querySelector('.protection-net.selected')?.textContent || 'Aucun';
+      html += `<li><strong>Filets de protection :</strong> ${protectionNet}</li>`;
+      configArray.push(`Filets de protection: ${protectionNet}`);
+
+      const polesProtection = document.querySelector('.poles-protection.selected')?.textContent || 'Aucune';
+      html += `<li><strong>Protection des poteaux de filet: </strong> ${polesProtection}</li>`;
+      configArray.push(`Protection des poteaux de filet: ${polesProtection}`);
+
+      const doorProtection = document.querySelector('.door-protection.selected')?.textContent || 'Aucune';
+      html += `<li><strong>Protection des portes :</strong> ${doorProtection}</li>`;
+      configArray.push(`Protection des portes: ${doorProtection}`);
+
+      if (document.getElementById('doorsOptions')?.style.display !== 'none') {
+        const leftDoor = document.querySelector('.left-door.selected')?.textContent || 'Aucune';
+        const rightDoor = document.querySelector('.right-door.selected')?.textContent || 'Aucune';
+        html += `<li><strong>Porte gauche :</strong> ${leftDoor}</li>`;
+        html += `<li><strong>Porte droite :</strong> ${rightDoor}</li>`;
+        configArray.push(`Porte gauche: ${leftDoor}`);
+        configArray.push(`Porte droite: ${rightDoor}`);
+      }
+
+      const coverOption = document.querySelector('.cover.selected')?.textContent || 'Aucune';
+      html += `<li><strong>Toiture :</strong> ${coverOption}</li>`;
+      configArray.push(`Toiture: ${coverOption}`);
+
+      const margin = document.querySelector('.margin.selected')?.textContent || 'Aucune';
+      html += `<li><strong>Marges :</strong> ${margin}</li>`;
+      configArray.push(`Marges: ${margin}`);
+
+      html += '</ul>';
+      summary.innerHTML = html;
+
+      const configString = configArray.join(' | ');
+
+      const configurationDataField = document.querySelector('input[name="configuration_data"]');
+      if (configurationDataField) {
+        configurationDataField.value = configString;
+      }
+
+      const configDataField = document.getElementById('config-configuration-data');
+      if (configDataField) {
+        configDataField.value = configString;
+      }
+    }
+
+    if (contactForm) {
+      contactForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        updateConfigurationSummary();
+
+        const firstName = document.getElementById('config-first-name')?.value.trim();
+        const lastName = document.getElementById('config-last-name')?.value.trim();
+        const email = document.getElementById('config-email')?.value.trim();
+        const description = document.getElementById('config-description')?.value.trim();
+
+        const configDataField = document.querySelector('input[name="configuration_data"]') ||
+          document.getElementById('config-configuration-data');
+        const configData = configDataField?.value.trim() || '';
+
+        if (!firstName || !lastName || !email) {
+          alert('Veuillez remplir les champs obligatoires');
+          return;
+        }
+
+        const fluentForm = document.getElementById('fluentform_12');
+        if (!fluentForm) {
+          console.error('Fluent Form not found');
+          return;
+        }
+
+        fluentForm.querySelector('[name="names[first_name]"]').value = firstName;
+        fluentForm.querySelector('[name="names[last_name]"]').value = lastName;
+        fluentForm.querySelector('[name="email"]').value = email;
+
+        const messageField = fluentForm.querySelector('[name="message"]');
+        if (messageField) messageField.value = description || '';
+
+        const configurationField = fluentForm.querySelector('[name="configuration_data"]');
+        if (configurationField) configurationField.value = configData;
+
+        // Submit Fluent Form
+        if (typeof FluentForm !== 'undefined' && FluentForm.submit) {
+          FluentForm.submit(fluentForm)
+            .then(response => {
+              alert('Merci pour votre demande de devis! Nous vous contacterons bientôt.');
+              contactForm.reset();
+            })
+            .catch(error => {
+              console.error('Erreur:', error);
+              alert("Une erreur s'est produite. Veuillez réessayer.");
+            });
+        } else {
+          console.error('FluentForm is not available');
+          fluentForm.submit();
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      updateConfigurationSummary();
+    });
+  </script>
+
+
+</body>
+
+</html>
